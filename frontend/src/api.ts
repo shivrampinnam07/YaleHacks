@@ -12,10 +12,16 @@ async function parseError(res: Response): Promise<string> {
 
 export type OcrResponse = { session_id: string; ocr_text: string };
 
-export async function postOcr(file: File, sessionId?: string): Promise<OcrResponse> {
+export async function postOcr(
+  file: File,
+  sessionId?: string,
+  description?: string
+): Promise<OcrResponse> {
   const fd = new FormData();
   fd.append("file", file);
   if (sessionId) fd.append("session_id", sessionId);
+  if (description != null && description !== "")
+    fd.append("description", description);
   const r = await fetch(`${base()}/api/ocr`, { method: "POST", body: fd });
   if (!r.ok) throw new Error(await parseError(r));
   return r.json() as Promise<OcrResponse>;
@@ -40,30 +46,50 @@ export async function postGraph(body: {
   return r.json() as Promise<GraphResponse>;
 }
 
-export type SearchResponse = {
-  q: string;
-  google_snippets: string;
-  bing_snippets: string;
+export type WardrobeItemPayload = {
+  description?: string;
+  ocr_text: string;
+  summary: string;
   session_id?: string;
 };
 
-export async function postSearch(body: {
-  q?: string;
-  session_id?: string;
-}): Promise<SearchResponse> {
-  const r = await fetch(`${base()}/api/search`, {
+export type WardrobePerItem = {
+  title: string;
+  summary_points: string[];
+  key_materials: string;
+  top_environmental_impacts: string;
+  societal_notes: string;
+};
+
+export type WardrobeComparisonTable = {
+  headers: string[];
+  rows: string[][];
+};
+
+export type WardrobeAggregationMetrics = {
+  item_count: number;
+  fibers_repeated_across_items: string[];
+  themes_repeated_across_items: string[];
+  highest_concern_garment_index: number | null;
+  notes: string;
+};
+
+export type WardrobeImpactResponse = {
+  per_item: WardrobePerItem[];
+  comparison_table: WardrobeComparisonTable;
+  aggregation_metrics: WardrobeAggregationMetrics | null;
+  aggregation_narrative: string;
+  final_conclusion: string;
+};
+
+export async function postWardrobeImpact(
+  items: WardrobeItemPayload[]
+): Promise<WardrobeImpactResponse> {
+  const r = await fetch(`${base()}/api/wardrobe/impact`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ items }),
   });
   if (!r.ok) throw new Error(await parseError(r));
-  return r.json() as Promise<SearchResponse>;
-}
-
-export type SessionDoc = Record<string, unknown>;
-
-export async function getSession(sessionId: string): Promise<SessionDoc> {
-  const r = await fetch(`${base()}/api/sessions/${encodeURIComponent(sessionId)}`);
-  if (!r.ok) throw new Error(await parseError(r));
-  return r.json() as Promise<SessionDoc>;
+  return r.json() as Promise<WardrobeImpactResponse>;
 }

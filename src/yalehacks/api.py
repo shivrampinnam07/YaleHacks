@@ -14,6 +14,7 @@ from yalehacks.graph import run_full_graph
 from yalehacks.query_build import build_sustainability_query
 from yalehacks.brightdata_client import search_parallel
 from yalehacks.tag_read import read_tag_text
+from yalehacks.wardrobe_impact import compute_wardrobe_impact
 
 
 def _session_json(doc: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -70,6 +71,7 @@ def health() -> dict[str, str]:
 async def api_ocr(
     file: UploadFile = File(...),
     session_id: str | None = Form(None),
+    description: str | None = Form(None),
 ) -> dict[str, Any]:
     data = await file.read()
     if not data:
@@ -84,7 +86,10 @@ async def api_ocr(
         text = read_tag_text(data)
     except Exception as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
-    _update_session_safe(sid, {"ocr_text": text})
+    fields: dict[str, Any] = {"ocr_text": text}
+    if description is not None and description.strip():
+        fields["item_description"] = description.strip()
+    _update_session_safe(sid, fields)
     return {"session_id": sid, "ocr_text": text}
 
 
@@ -137,6 +142,37 @@ class GraphBody(BaseModel):
         if not self.session_id and not self.ocr_text:
             raise ValueError("Provide session_id or ocr_text")
         return self
+
+
+class WardrobeItemIn(BaseModel):
+    description: str | None = None
+    ocr_text: str = ""
+    summary: str = ""
+    session_id: str | None = None
+
+
+class WardrobeImpactBody(BaseModel):
+    items: list[WardrobeItemIn]
+
+    @model_validator(mode="after")
+    def need_items(self) -> WardrobeImpactBody:
+        if not self.items:
+            raise ValueError("Provide at least one item")
+        return self
+
+
+@app.post("/api/wardrobe/impact")
+def api_wardrobe_impact(body: WardrobeImpactBody) -> dict[str, Any]:
+    ready = [it.model_dump() for it in body.items if (it.summary or "").strip()]
+    if not ready:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one item with a non-empty summary is required",
+        )
+    try:
+        return compute_wardrobe_impact(ready)
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
 
 
 @app.post("/api/graph")

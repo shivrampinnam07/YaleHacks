@@ -1,380 +1,349 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useId, useState } from "react";
+import { BackgroundClothes } from "./BackgroundClothes";
+import { WardrobeReport } from "./WardrobeReport";
 import {
-  getSession,
   postGraph,
   postOcr,
-  postSearch,
+  postWardrobeImpact,
   type GraphResponse,
-  type OcrResponse,
-  type SearchResponse,
-  type SessionDoc,
+  type WardrobeImpactResponse,
 } from "./api";
 
-type Phase = "idle" | "ocr" | "graph" | "search" | "lookup";
+type ItemStatus = "draft" | "analyzing" | "done" | "error";
+
+type WardrobeItem = {
+  localId: string;
+  description: string;
+  file: File | null;
+  previewUrl: string | null;
+  status: ItemStatus;
+  sessionId?: string;
+  ocrText?: string;
+  summary?: string;
+  searchQuery?: string;
+  error?: string;
+};
+
+function newItem(): WardrobeItem {
+  return {
+    localId: crypto.randomUUID(),
+    description: "",
+    file: null,
+    previewUrl: null,
+    status: "draft",
+  };
+}
 
 export default function App() {
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [drag, setDrag] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const formId = useId();
+  const [items, setItems] = useState<WardrobeItem[]>(() => [newItem(), newItem()]);
+  const [globalBusy, setGlobalBusy] = useState(false);
+  const [globalErr, setGlobalErr] = useState<string | null>(null);
+  const [impactBusy, setImpactBusy] = useState(false);
+  const [impact, setImpact] = useState<WardrobeImpactResponse | null>(null);
 
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [err, setErr] = useState<string | null>(null);
-
-  const [fullOcr, setFullOcr] = useState<OcrResponse | null>(null);
-  const [fullGraph, setFullGraph] = useState<GraphResponse | null>(null);
-
-  const [ocrOnly, setOcrOnly] = useState<OcrResponse | null>(null);
-
-  const [searchQ, setSearchQ] = useState("");
-  const [searchSessionId, setSearchSessionId] = useState("");
-  const [searchOut, setSearchOut] = useState<SearchResponse | null>(null);
-
-  const [graphSessionId, setGraphSessionId] = useState("");
-  const [graphOcrText, setGraphOcrText] = useState("");
-  const [graphOut, setGraphOut] = useState<GraphResponse | null>(null);
-
-  const [lookupId, setLookupId] = useState("");
-  const [sessionDoc, setSessionDoc] = useState<SessionDoc | null>(null);
-
-  useEffect(() => {
-    if (!file) {
-      setPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-
-  const onPick = useCallback((f: File | null) => {
-    setErr(null);
-    setFullOcr(null);
-    setFullGraph(null);
-    setOcrOnly(null);
-    setFile(f);
+  const updateItem = useCallback((localId: string, patch: Partial<WardrobeItem>) => {
+    setItems((prev) =>
+      prev.map((it) => (it.localId === localId ? { ...it, ...patch } : it))
+    );
   }, []);
 
-  const handleFullScan = async () => {
-    if (!file) return;
-    setErr(null);
-    setFullOcr(null);
-    setFullGraph(null);
+  const onFile = (localId: string, file: File | null) => {
+    setItems((prev) => {
+      const row = prev.find((x) => x.localId === localId);
+      if (row?.previewUrl) URL.revokeObjectURL(row.previewUrl);
+      const cleared = {
+        sessionId: undefined,
+        ocrText: undefined,
+        summary: undefined,
+        searchQuery: undefined,
+        error: undefined,
+      };
+      if (!file) {
+        return prev.map((it) =>
+          it.localId === localId
+            ? {
+                ...it,
+                file: null,
+                previewUrl: null,
+                status: "draft" as const,
+                ...cleared,
+              }
+            : it
+        );
+      }
+      const url = URL.createObjectURL(file);
+      return prev.map((it) =>
+        it.localId === localId
+          ? {
+              ...it,
+              file,
+              previewUrl: url,
+              status: "draft" as const,
+              ...cleared,
+            }
+          : it
+      );
+    });
+    setImpact(null);
+  };
+
+  const addRow = () => {
+    setItems((prev) => [...prev, newItem()]);
+    setImpact(null);
+  };
+
+  const removeRow = (localId: string) => {
+    setItems((prev) => {
+      const it = prev.find((x) => x.localId === localId);
+      if (it?.previewUrl) URL.revokeObjectURL(it.previewUrl);
+      const next = prev.filter((x) => x.localId !== localId);
+      return next.length ? next : [newItem()];
+    });
+    setImpact(null);
+  };
+
+  const analyzeOne = async (it: WardrobeItem): Promise<WardrobeItem> => {
+    if (!it.file) {
+      return { ...it, status: "error" as const, error: "Add a tag photo." };
+    }
+    const next: WardrobeItem = { ...it, status: "analyzing", error: undefined };
     try {
-      setPhase("ocr");
-      const ocr = await postOcr(file);
-      setFullOcr(ocr);
-      setPhase("graph");
-      const graph = await postGraph({ session_id: ocr.session_id });
-      setFullGraph(graph);
-      setPhase("idle");
+      const ocr = await postOcr(it.file, undefined, it.description.trim() || undefined);
+      const graph: GraphResponse = await postGraph({ session_id: ocr.session_id });
+      return {
+        ...next,
+        status: "done",
+        sessionId: ocr.session_id,
+        ocrText: ocr.ocr_text,
+        summary: graph.summary ?? "",
+        searchQuery: graph.search_query ?? "",
+      };
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-      setPhase("idle");
+      return {
+        ...next,
+        status: "error",
+        error: e instanceof Error ? e.message : String(e),
+      };
     }
   };
 
-  const handleOcrOnly = async () => {
-    if (!file) return;
-    setErr(null);
-    setOcrOnly(null);
+  const analyzeAll = async () => {
+    setGlobalErr(null);
+    setImpact(null);
+    setGlobalBusy(true);
     try {
-      setPhase("ocr");
-      const o = await postOcr(file);
-      setOcrOnly(o);
-      setPhase("idle");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-      setPhase("idle");
+      const snapshot = [...items];
+      for (const it of snapshot) {
+        if (!it.file) continue;
+        setItems((prev) =>
+          prev.map((row) =>
+            row.localId === it.localId ? { ...row, status: "analyzing" as const } : row
+          )
+        );
+        const updated = await analyzeOne({ ...it, status: "analyzing" });
+        setItems((prev) =>
+          prev.map((row) => (row.localId === it.localId ? updated : row))
+        );
+      }
+    } finally {
+      setGlobalBusy(false);
     }
   };
 
-  const handleSearch = async () => {
-    setErr(null);
-    setSearchOut(null);
-    const q = searchQ.trim();
-    const sid = searchSessionId.trim();
-    if (!q && !sid) {
-      setErr("Enter a search query or a session ID.");
+  const runWardrobeImpact = async () => {
+    setGlobalErr(null);
+    const payload = items
+      .filter((it) => (it.summary || "").trim())
+      .map((it) => ({
+        description: it.description.trim() || undefined,
+        ocr_text: it.ocrText ?? "",
+        summary: it.summary ?? "",
+        session_id: it.sessionId,
+      }));
+    if (!payload.length) {
+      setGlobalErr("Analyze at least one garment with a tag photo first.");
       return;
     }
+    setImpactBusy(true);
+    setImpact(null);
     try {
-      setPhase("search");
-      const out = await postSearch(q ? { q } : { session_id: sid });
-      setSearchOut(out);
-      setPhase("idle");
+      const out = await postWardrobeImpact(payload);
+      setImpact(out);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-      setPhase("idle");
+      setGlobalErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImpactBusy(false);
     }
   };
 
-  const handleGraphOnly = async () => {
-    setErr(null);
-    setGraphOut(null);
-    const sid = graphSessionId.trim();
-    const ot = graphOcrText.trim();
-    if (!sid && !ot) {
-      setErr("Enter session_id (after OCR) or paste ocr_text.");
-      return;
-    }
-    try {
-      setPhase("graph");
-      const out = sid
-        ? await postGraph({ session_id: sid })
-        : await postGraph({ ocr_text: ot });
-      setGraphOut(out);
-      setPhase("idle");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-      setPhase("idle");
-    }
-  };
-
-  const handleLookup = async () => {
-    const id = lookupId.trim();
-    if (!id) {
-      setErr("Enter a session ID.");
-      return;
-    }
-    setErr(null);
-    setSessionDoc(null);
-    try {
-      setPhase("lookup");
-      const doc = await getSession(id);
-      setSessionDoc(doc);
-      setPhase("idle");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
-      setPhase("idle");
-    }
-  };
-
-  const busy =
-    phase === "ocr" || phase === "graph" || phase === "search" || phase === "lookup";
+  const doneCount = items.filter((it) => it.status === "done").length;
+  const canImpact = items.some((it) => (it.summary || "").trim());
 
   return (
-    <div className="app">
-      <h1>Garment tag sustainability</h1>
-      <p className="sub">
-        Same flow as <code style={{ fontFamily: "var(--mono)", fontSize: "0.9em" }}>yalehacks scan</code>
-        : vision read → Bright Data (Google + Bing) → Groq summary. Backend: FastAPI on port 8000.
-      </p>
+    <div className="site">
+      <BackgroundClothes />
+      <header className="site-header">
+        <div className="site-header-inner">
+          <div className="brand-block">
+            <span className="brand-mark" aria-hidden>
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                <path
+                  d="M12 14c0-4 4-8 8-8s8 4 8 8l4 2 6 3v6H4v-6l6-3 4-2z"
+                  fill="currentColor"
+                  opacity="0.9"
+                />
+                <path
+                  d="M8 22v10c0 3 6 6 12 6s12-3 12-6V22"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  opacity="0.6"
+                />
+              </svg>
+            </span>
+            <div>
+              <p className="brand-kicker">YaleHacks · Textiles &amp; society</p>
+              <p className="brand-title">Wardrobe impact</p>
+            </div>
+          </div>
+          <p className="header-tagline">
+            What we wear connects to workers, water, climate, and communities — read the label,
+            learn the story.
+          </p>
+        </div>
+      </header>
+
+      <main className="site-main">
+        <div className="app">
+          <h1>Test my wardrobe</h1>
+          <p className="sub">
+            Add each garment&apos;s description and care-label photo. We read the tag, search trusted
+            sources, and summarize — then blend everything into one societal-impact view of your
+            closet.
+          </p>
+
+          <section>
+        <h2>Your clothes</h2>
+        <div className="wardrobe-list">
+          {items.map((it, idx) => (
+            <div key={it.localId} className="wardrobe-item">
+              <div className="wardrobe-item-head">
+                <span className="wardrobe-item-title">Garment {idx + 1}</span>
+                <span className={`wardrobe-badge status-${it.status}`}>{it.status}</span>
+                <button
+                  type="button"
+                  className="icon-remove"
+                  onClick={() => removeRow(it.localId)}
+                  aria-label="Remove garment"
+                  disabled={globalBusy}
+                >
+                  ×
+                </button>
+              </div>
+              <div className="field">
+                <label htmlFor={`${formId}-d-${it.localId}`}>Description</label>
+                <input
+                  id={`${formId}-d-${it.localId}`}
+                  type="text"
+                  placeholder="e.g. Winter parka, blue, daily wear"
+                  value={it.description}
+                  disabled={globalBusy}
+                  onChange={(e) => {
+                    updateItem(it.localId, { description: e.target.value });
+                    setImpact(null);
+                  }}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor={`${formId}-f-${it.localId}`}>Tag photo</label>
+                <input
+                  id={`${formId}-f-${it.localId}`}
+                  type="file"
+                  accept="image/*"
+                  disabled={globalBusy}
+                  onChange={(e) => onFile(it.localId, e.target.files?.[0] ?? null)}
+                />
+              </div>
+              {it.previewUrl ? (
+                <img className="preview wardrobe-thumb" src={it.previewUrl} alt="" />
+              ) : null}
+              {it.error ? <div className="err small">{it.error}</div> : null}
+              {it.status === "done" ? (
+                <div className="wardrobe-results">
+                  {it.sessionId ? (
+                    <div className="result-block tight">
+                      <label>Session</label>
+                      <pre className="tiny">{it.sessionId}</pre>
+                    </div>
+                  ) : null}
+                  {it.ocrText ? (
+                    <div className="result-block tight">
+                      <label>Tag text</label>
+                      <div className="box small">{it.ocrText}</div>
+                    </div>
+                  ) : null}
+                  {it.summary ? (
+                    <div className="result-block tight">
+                      <label>Item summary</label>
+                      <div className="box small">{it.summary}</div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+        <div className="actions">
+          <button type="button" className="secondary" disabled={globalBusy} onClick={addRow}>
+            Add garment
+          </button>
+          <button
+            type="button"
+            className="primary"
+            disabled={globalBusy || !items.some((x) => x.file)}
+            onClick={analyzeAll}
+          >
+            {globalBusy ? "Analyzing…" : "Analyze all with photos"}
+          </button>
+        </div>
+        <div className="hint">
+          {doneCount} / {items.filter((x) => x.file).length || items.length} with photos analyzed
+          (only rows with a photo are processed).
+        </div>
+      </section>
 
       <section>
-        <h2>1. Image</h2>
-        <div
-          className={`drop ${drag ? "drag" : ""}`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDrag(true);
-          }}
-          onDragLeave={() => setDrag(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDrag(false);
-            const f = e.dataTransfer.files[0];
-            if (f?.type.startsWith("image/")) onPick(f);
-          }}
-          onClick={() => inputRef.current?.click()}
-          role="presentation"
-        >
-          <div className="drop-inner">
-            <input
-              ref={inputRef}
-              type="file"
-              accept="image/*"
-              onChange={(e) => onPick(e.target.files?.[0] ?? null)}
-            />
-            {file ? (
-              <>
-                <strong>{file.name}</strong>
-                <div className="hint">Click or drop another image to replace</div>
-              </>
-            ) : (
-              <>
-                Drop a tag photo here or click to choose
-                <div className="hint">PNG, JPEG, WebP, …</div>
-              </>
-            )}
-          </div>
-        </div>
-        {preview ? (
-          <img className="preview" src={preview} alt="Tag preview" />
-        ) : null}
+        <h2>Wardrobe report</h2>
+        <p className="muted-block">
+          Builds per-garment highlights (1–2 points each), a comparison table, aggregation metrics
+          when you have more than one item, a short cross-piece narrative, and a final conclusion.
+        </p>
         <div className="actions">
           <button
             type="button"
             className="primary"
-            disabled={!file || busy}
-            onClick={handleFullScan}
+            disabled={impactBusy || !canImpact}
+            onClick={runWardrobeImpact}
           >
-            {busy ? "Working…" : "Run full analysis"}
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            disabled={!file || busy}
-            onClick={handleOcrOnly}
-          >
-            OCR only
+            {impactBusy ? "Generating report…" : "Generate full wardrobe report"}
           </button>
         </div>
-        <div className={`status ${busy ? "working" : ""}`}>
-          {phase === "ocr" ? "Reading tag with Groq vision…" : null}
-          {phase === "graph" ? "Searching via Bright Data (Google + Bing)…" : null}
-        </div>
-        {err ? <div className="err">{err}</div> : null}
-
-        {fullOcr ? (
-          <div className="result-block">
-            <label>Session ID</label>
-            <pre>{fullOcr.session_id}</pre>
-          </div>
-        ) : null}
-        {fullOcr ? (
-          <div className="result-block">
-            <label>Tag text (OCR)</label>
-            <div className="box">{fullOcr.ocr_text}</div>
-          </div>
-        ) : null}
-        {fullGraph?.summary ? (
-          <div className="result-block">
-            <label>Summary</label>
-            <div className="box">{fullGraph.summary}</div>
-          </div>
-        ) : null}
-        {fullGraph?.search_query ? (
-          <div className="result-block">
-            <label>Search query used</label>
-            <pre>{fullGraph.search_query}</pre>
-          </div>
-        ) : null}
-
-        {ocrOnly ? (
-          <div className="result-block">
-            <label>OCR only — session</label>
-            <pre>{ocrOnly.session_id}</pre>
-            <label style={{ marginTop: "0.75rem" }}>Tag text</label>
-            <div className="box">{ocrOnly.ocr_text}</div>
-          </div>
-        ) : null}
+        {globalErr ? <div className="err">{globalErr}</div> : null}
+        {impact ? <WardrobeReport data={impact} /> : null}
       </section>
-
-      <section>
-        <h2>2. Search (Bright Data)</h2>
-        <div className="row cols-2">
-          <div className="field">
-            <label htmlFor="q">Query q</label>
-            <input
-              id="q"
-              type="text"
-              placeholder="e.g. polyester textile sustainability"
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="sid">Or session ID (uses stored tag text)</label>
-            <input
-              id="sid"
-              type="text"
-              placeholder="uuid from OCR"
-              value={searchSessionId}
-              onChange={(e) => setSearchSessionId(e.target.value)}
-            />
-          </div>
         </div>
-        <button type="button" className="primary" disabled={busy} onClick={handleSearch}>
-          Run search
-        </button>
-        {searchOut ? (
-          <>
-            <div className="result-block">
-              <label>Query</label>
-              <pre>{searchOut.q}</pre>
-            </div>
-            <div className="row cols-2">
-              <div className="result-block">
-                <label>Google snippets</label>
-                <div className="box">{searchOut.google_snippets || "—"}</div>
-              </div>
-              <div className="result-block">
-                <label>Bing snippets</label>
-                <div className="box">{searchOut.bing_snippets || "—"}</div>
-              </div>
-            </div>
-          </>
-        ) : null}
-      </section>
+      </main>
 
-      <section>
-        <h2>3. Graph only (LangGraph + summary)</h2>
-        <div className="row cols-2">
-          <div className="field">
-            <label htmlFor="gsid">session_id</label>
-            <input
-              id="gsid"
-              type="text"
-              placeholder="After OCR, same session"
-              value={graphSessionId}
-              onChange={(e) => setGraphSessionId(e.target.value)}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="got">or raw ocr_text (new session)</label>
-            <input
-              id="got"
-              type="text"
-              placeholder="Paste tag text…"
-              value={graphOcrText}
-              onChange={(e) => setGraphOcrText(e.target.value)}
-            />
-          </div>
+      <footer className="site-footer">
+        <div className="site-footer-inner">
+          <p className="footer-line">
+            Better information helps everyone choose clothes that align with the world we want —
+            fair work, less waste, and a healthier environment.
+          </p>
+          <p className="footer-meta">YaleHacks · Societal impact through everyday threads</p>
         </div>
-        <button type="button" className="primary" disabled={busy} onClick={handleGraphOnly}>
-          Run graph
-        </button>
-        {graphOut ? (
-          <>
-            <div className="result-block">
-              <label>session_id</label>
-              <pre>{graphOut.session_id}</pre>
-            </div>
-            <div className="result-block">
-              <label>Summary</label>
-              <div className="box">{graphOut.summary || "—"}</div>
-            </div>
-            <div className="result-block">
-              <label>search_query</label>
-              <pre>{graphOut.search_query || "—"}</pre>
-            </div>
-          </>
-        ) : null}
-      </section>
-
-      <section>
-        <h2>4. Load session</h2>
-        <div className="field">
-          <label htmlFor="lid">session_id</label>
-          <input
-            id="lid"
-            type="text"
-            placeholder="GET /api/sessions/{id}"
-            value={lookupId}
-            onChange={(e) => setLookupId(e.target.value)}
-          />
-        </div>
-        <button type="button" className="secondary" disabled={busy} onClick={handleLookup}>
-          Fetch session
-        </button>
-        {sessionDoc ? (
-          <div className="result-block">
-            <label>Document</label>
-            <pre>{JSON.stringify(sessionDoc, null, 2)}</pre>
-          </div>
-        ) : null}
-      </section>
+      </footer>
     </div>
   );
 }
