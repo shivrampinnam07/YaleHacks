@@ -11,12 +11,25 @@ export function WardrobeReport({ data }: { data: WardrobeImpactResponse }) {
         <div className="per-item-summaries">
           {data.per_item.map((it, i) => (
             <div key={i} className="per-item-card">
-              <h3 className="per-item-title">{it.title}</h3>
+              <div className="per-item-topline">
+                <span className="per-item-chip">Piece {i + 1}</span>
+                <h3 className="per-item-title">{it.title}</h3>
+              </div>
               <ul className="per-item-bullets">
                 {it.summary_points.map((p, j) => (
                   <li key={j}>{p}</li>
                 ))}
               </ul>
+              <div className="per-item-meta">
+                <div>
+                  <span className="metric-label">Materials</span>
+                  <p className="metric-value">{it.key_materials || "—"}</p>
+                </div>
+                <div>
+                  <span className="metric-label">Top impact</span>
+                  <p className="metric-value">{it.top_environmental_impacts || "—"}</p>
+                </div>
+              </div>
             </div>
           ))}
         </div>

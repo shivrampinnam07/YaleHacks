@@ -34,6 +34,32 @@ function newItem(): WardrobeItem {
   };
 }
 
+const heroImages = [
+  "https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1200&q=80",
+  "https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1200&q=80",
+];
+
+const garmentPlaceholders = [
+  {
+    image:
+      "https://images.unsplash.com/photo-1512436991641-6745cdb1723f?auto=format&fit=crop&w=1200&q=80",
+    label: "Upload a label shot",
+    text: "Composition, origin, and washing notes will be parsed from the tag.",
+  },
+  {
+    image:
+      "https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=1200&q=80",
+    label: "Stage the piece",
+    text: "Use a clean care-tag photo and we will translate it into a closet-ready impact card.",
+  },
+  {
+    image:
+      "https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=1200&q=80",
+    label: "Retail-grade intake",
+    text: "Treat every garment like a premium listing with metadata, visuals, and material context.",
+  },
+];
+
 export default function App() {
   const formId = useId();
   const [items, setItems] = useState<WardrobeItem[]>(() => [newItem(), newItem()]);
@@ -185,153 +211,241 @@ export default function App() {
       <BackgroundClothes />
       <header className="site-header">
         <div className="site-header-inner">
-          <div className="brand-block">
-            <span className="brand-mark" aria-hidden>
-              <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-                <path
-                  d="M12 14c0-4 4-8 8-8s8 4 8 8l4 2 6 3v6H4v-6l6-3 4-2z"
-                  fill="currentColor"
-                  opacity="0.9"
-                />
-                <path
-                  d="M8 22v10c0 3 6 6 12 6s12-3 12-6V22"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                  opacity="0.6"
-                />
-              </svg>
-            </span>
-            <div>
-              <p className="brand-kicker">YaleHacks · Textiles &amp; society</p>
-              <p className="brand-title">Wardrobe impact</p>
+          <div className="topbar">
+            <div className="brand-block">
+              <span className="brand-mark" aria-hidden>
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                  <path
+                    d="M12 14c0-4 4-8 8-8s8 4 8 8l4 2 6 3v6H4v-6l6-3 4-2z"
+                    fill="currentColor"
+                    opacity="0.9"
+                  />
+                  <path
+                    d="M8 22v10c0 3 6 6 12 6s12-3 12-6V22"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    fill="none"
+                    opacity="0.6"
+                  />
+                </svg>
+              </span>
+              <div>
+                <p className="brand-kicker">YaleHacks sustainable wardrobe intelligence</p>
+                <p className="brand-title">WeaveWise</p>
+              </div>
+            </div>
+            <div className="topbar-pills">
+              <span className="top-pill">Tag reader</span>
+              <span className="top-pill">Wardrobe scoring</span>
+              <span className="top-pill">Social impact</span>
             </div>
           </div>
-          <p className="header-tagline">
-            What we wear connects to workers, water, climate, and communities — read the label,
-            learn the story.
-          </p>
+          <section className="hero-panel">
+            <div className="hero-copy">
+              <p className="hero-eyebrow">Read garment labels, reveal materials, and understand impact</p>
+              <h1 className="hero-title">Know the full story behind every piece in your wardrobe.</h1>
+              <p className="header-tagline">
+                Upload garment tags, extract materials and care details, and turn them into a refined wardrobe-level view of climate, sourcing, and long-term wear.
+              </p>
+              <div className="hero-actions">
+                <a className="hero-link" href="#upload-lab">Start scanning</a>
+                <span className="hero-note">{doneCount} garments analyzed in this session</span>
+              </div>
+            </div>
+            <div className="hero-stack">
+              <article className="hero-card hero-card--dark">
+                <img className="hero-card-image" src={heroImages[0]} alt="" />
+                <span className="hero-card-label">Most loved flow</span>
+                <strong>Upload tag</strong>
+                <p>Photo-first intake with instant preview and item-by-item progress.</p>
+              </article>
+              <article className="hero-card hero-card--light">
+                <img className="hero-card-image" src={heroImages[1]} alt="" />
+                <span className="hero-card-label">Why it matters</span>
+                <strong>Beyond fabric</strong>
+                <p>Materials, origin, and care instructions all shape the final footprint.</p>
+              </article>
+            </div>
+          </section>
         </div>
       </header>
 
       <main className="site-main">
         <div className="app">
-          <h1>Test my wardrobe</h1>
-          <p className="sub">
-            Add each garment&apos;s description and care-label photo. We read the tag, search trusted
-            sources, and summarize — then blend everything into one societal-impact view of your
-            closet.
-          </p>
+          <section className="editorial-grid">
+            <article className="editorial-card">
+              <span className="editorial-kicker">How it works</span>
+              <h2>Scan a garment like a listing.</h2>
+              <p>Add the piece, upload the tag, and let the app turn the care label into a structured sustainability profile.</p>
+            </article>
+            <article className="editorial-card editorial-card--soft">
+              <span className="editorial-kicker">What you get</span>
+              <h2>One piece view + wardrobe story.</h2>
+              <p>Every item gets a quick read, then the whole closet gets compared for repeated fibers, themes, and higher-concern pieces.</p>
+            </article>
+            <article className="editorial-card editorial-card--accent">
+              <span className="editorial-kicker">Built for discovery</span>
+              <h2>Fashion-native UI.</h2>
+              <p>More scrollable, more visual, and more editorial so it feels closer to a marketplace than a developer dashboard.</p>
+            </article>
+          </section>
 
-          <section>
-        <h2>Your clothes</h2>
-        <div className="wardrobe-list">
-          {items.map((it, idx) => (
-            <div key={it.localId} className="wardrobe-item">
-              <div className="wardrobe-item-head">
-                <span className="wardrobe-item-title">Garment {idx + 1}</span>
-                <span className={`wardrobe-badge status-${it.status}`}>{it.status}</span>
-                <button
-                  type="button"
-                  className="icon-remove"
-                  onClick={() => removeRow(it.localId)}
-                  aria-label="Remove garment"
-                  disabled={globalBusy}
-                >
-                  ×
-                </button>
+          <section id="upload-lab" className="section-shell">
+            <div className="section-heading">
+              <div>
+                <p className="section-kicker">Upload lab</p>
+                <h2>Your wardrobe intake</h2>
               </div>
-              <div className="field">
-                <label htmlFor={`${formId}-d-${it.localId}`}>Description</label>
-                <input
-                  id={`${formId}-d-${it.localId}`}
-                  type="text"
-                  placeholder="e.g. Winter parka, blue, daily wear"
-                  value={it.description}
-                  disabled={globalBusy}
-                  onChange={(e) => {
-                    updateItem(it.localId, { description: e.target.value });
-                    setImpact(null);
-                  }}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`${formId}-f-${it.localId}`}>Tag photo</label>
-                <input
-                  id={`${formId}-f-${it.localId}`}
-                  type="file"
-                  accept="image/*"
-                  disabled={globalBusy}
-                  onChange={(e) => onFile(it.localId, e.target.files?.[0] ?? null)}
-                />
-              </div>
-              {it.previewUrl ? (
-                <img className="preview wardrobe-thumb" src={it.previewUrl} alt="" />
-              ) : null}
-              {it.error ? <div className="err small">{it.error}</div> : null}
-              {it.status === "done" ? (
-                <div className="wardrobe-results">
-                  {it.sessionId ? (
-                    <div className="result-block tight">
-                      <label>Session</label>
-                      <pre className="tiny">{it.sessionId}</pre>
-                    </div>
-                  ) : null}
-                  {it.ocrText ? (
-                    <div className="result-block tight">
-                      <label>Tag text</label>
-                      <div className="box small">{it.ocrText}</div>
-                    </div>
-                  ) : null}
-                  {it.summary ? (
-                    <div className="result-block tight">
-                      <label>Item summary</label>
-                      <div className="box small">{it.summary}</div>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
+              <p className="section-copy">
+                Add each garment like a listing card. Photos drive the analysis, descriptions make the summary more human.
+              </p>
             </div>
-          ))}
-        </div>
-        <div className="actions">
-          <button type="button" className="secondary" disabled={globalBusy} onClick={addRow}>
-            Add garment
-          </button>
-          <button
-            type="button"
-            className="primary"
-            disabled={globalBusy || !items.some((x) => x.file)}
-            onClick={analyzeAll}
-          >
-            {globalBusy ? "Analyzing…" : "Analyze all with photos"}
-          </button>
-        </div>
-        <div className="hint">
-          {doneCount} / {items.filter((x) => x.file).length || items.length} with photos analyzed
-          (only rows with a photo are processed).
-        </div>
-      </section>
 
-      <section>
-        <h2>Wardrobe report</h2>
-        <p className="muted-block">
-          Builds per-garment highlights (1–2 points each), a comparison table, aggregation metrics
-          when you have more than one item, a short cross-piece narrative, and a final conclusion.
-        </p>
-        <div className="actions">
-          <button
-            type="button"
-            className="primary"
-            disabled={impactBusy || !canImpact}
-            onClick={runWardrobeImpact}
-          >
-            {impactBusy ? "Generating report…" : "Generate full wardrobe report"}
-          </button>
-        </div>
-        {globalErr ? <div className="err">{globalErr}</div> : null}
-        {impact ? <WardrobeReport data={impact} /> : null}
-      </section>
+            <div className="summary-strip">
+              <div className="summary-pill">
+                <strong>{items.length}</strong>
+                <span>garments in queue</span>
+              </div>
+              <div className="summary-pill">
+                <strong>{items.filter((x) => x.file).length}</strong>
+                <span>with photos</span>
+              </div>
+              <div className="summary-pill">
+                <strong>{doneCount}</strong>
+                <span>analyzed</span>
+              </div>
+            </div>
+
+            <div className="wardrobe-grid">
+              {items.map((it, idx) => {
+                const placeholder = garmentPlaceholders[idx % garmentPlaceholders.length];
+                return (
+                <article key={it.localId} className="wardrobe-item">
+                  <div className="wardrobe-item-head">
+                    <div>
+                      <span className="wardrobe-item-index">Item {idx + 1}</span>
+                      <span className="wardrobe-item-title">Closet card</span>
+                    </div>
+                    <span className={`wardrobe-badge status-${it.status}`}>{it.status}</span>
+                    <button
+                      type="button"
+                      className="icon-remove"
+                      onClick={() => removeRow(it.localId)}
+                      aria-label="Remove garment"
+                      disabled={globalBusy}
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor={`${formId}-d-${it.localId}`}>Description</label>
+                    <input
+                      id={`${formId}-d-${it.localId}`}
+                      type="text"
+                      placeholder="Vintage fleece, washed black, everyday layer"
+                      value={it.description}
+                      disabled={globalBusy}
+                      onChange={(e) => {
+                        updateItem(it.localId, { description: e.target.value });
+                        setImpact(null);
+                      }}
+                    />
+                  </div>
+
+                  <div className="field">
+                    <label htmlFor={`${formId}-f-${it.localId}`}>Care tag photo</label>
+                    <input
+                      id={`${formId}-f-${it.localId}`}
+                      type="file"
+                      accept="image/*"
+                      disabled={globalBusy}
+                      onChange={(e) => onFile(it.localId, e.target.files?.[0] ?? null)}
+                    />
+                  </div>
+
+                  {it.previewUrl ? (
+                    <div className="image-frame">
+                      <img className="preview wardrobe-thumb" src={it.previewUrl} alt="" />
+                    </div>
+                  ) : (
+                    <div className="image-placeholder">
+                      <img className="image-placeholder-photo" src={placeholder.image} alt="" />
+                      <div className="image-placeholder-copy">
+                        <span>{placeholder.label}</span>
+                        <p>{placeholder.text}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {it.error ? <div className="err small">{it.error}</div> : null}
+
+                  {it.status === "done" ? (
+                    <div className="wardrobe-results">
+                      {it.ocrText ? (
+                        <div className="result-block tight">
+                          <label>Tag text</label>
+                          <div className="box small">{it.ocrText}</div>
+                        </div>
+                      ) : null}
+                      {it.summary ? (
+                        <div className="result-block tight">
+                          <label>Impact read</label>
+                          <div className="box small">{it.summary}</div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </article>
+                );
+              })}
+            </div>
+
+            <div className="actions">
+              <button type="button" className="secondary" disabled={globalBusy} onClick={addRow}>
+                Add another garment
+              </button>
+              <button
+                type="button"
+                className="primary"
+                disabled={globalBusy || !items.some((x) => x.file)}
+                onClick={analyzeAll}
+              >
+                {globalBusy ? "Analyzing…" : "Analyze selected tags"}
+              </button>
+            </div>
+            <div className="hint">
+              {doneCount} / {items.filter((x) => x.file).length || items.length} garments with photos analyzed.
+            </div>
+          </section>
+
+          <section className="section-shell report-shell">
+            <div className="section-heading">
+              <div>
+                <p className="section-kicker">Wardrobe report</p>
+                <h2>From individual pieces to closet-wide patterns</h2>
+              </div>
+              <p className="section-copy">
+                Turn your scanned items into a ranked, comparable wardrobe report with repeat fibers, top concerns, and an editorial-style summary.
+              </p>
+            </div>
+            <div className="report-cta">
+              <div>
+                <strong>Generate the full report</strong>
+                <p>Best when at least one garment has completed tag analysis.</p>
+              </div>
+              <button
+                type="button"
+                className="primary"
+                disabled={impactBusy || !canImpact}
+                onClick={runWardrobeImpact}
+              >
+                {impactBusy ? "Generating report…" : "Build wardrobe report"}
+              </button>
+            </div>
+            {globalErr ? <div className="err">{globalErr}</div> : null}
+            {impact ? <WardrobeReport data={impact} /> : null}
+          </section>
         </div>
       </main>
 
