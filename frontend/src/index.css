@@ -1,0 +1,241 @@
+:root {
+  --bg: #0f1419;
+  --surface: #1a222d;
+  --surface2: #232d3a;
+  --border: #2d3a4a;
+  --text: #e8eef4;
+  --muted: #8b9aab;
+  --accent: #3d9cf0;
+  --accent-dim: #2568a8;
+  --success: #3ecf8e;
+  --danger: #f07178;
+  --radius: 12px;
+  --font: "DM Sans", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.35rem;
+}
+
+.sub {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 0 0 2rem;
+}
+
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.35rem;
+  margin-bottom: 1.25rem;
+}
+
+section h2 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+
+.drop {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 2rem 1rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.drop:hover,
+.drop.drag {
+  border-color: var(--accent);
+  background: rgba(61, 156, 240, 0.06);
+}
+
+.drop input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+}
+
+.drop-inner {
+  position: relative;
+}
+
+.preview {
+  margin-top: 1rem;
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: var(--surface2);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+button {
+  font-family: var(--font);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: linear-gradient(165deg, var(--accent), var(--accent-dim));
+  color: #fff;
+}
+
+button.secondary {
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.status {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-top: 0.75rem;
+}
+
+.status.working {
+  color: var(--accent);
+}
+
+.status.ok {
+  color: var(--success);
+}
+
+.err {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(240, 113, 120, 0.12);
+  border: 1px solid rgba(240, 113, 120, 0.35);
+  border-radius: 8px;
+  color: #f5b4b7;
+  font-size: 0.88rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.result-block {
+  margin-top: 1rem;
+}
+
+.result-block label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+.result-block pre,
+.result-block .box {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  background: var(--bg);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.row {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .row.cols-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.field {
+  margin-bottom: 0.75rem;
+}
+
+.field label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.5rem;
+}
